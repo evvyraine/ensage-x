@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ensage
+      POSTGRES_USER: ensage
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes: ["postgres-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ensage"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+    ports: ["${PORT:-3000}:3000"]
+    environment:
+      DATABASE_URL: postgresql://ensage:${POSTGRES_PASSWORD}@postgres:5432/ensage
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:?Set CLERK_SECRET_KEY}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:?Set NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+      NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
+      NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
+    volumes: ["share-data:/app/data/storage"]
+  cleanup:
+    build: .
+    restart: unless-stopped
+    command: ["node", "scripts/cleanup.mjs", "--watch"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      DATABASE_URL: postgresql://ensage:${POSTGRES_PASSWORD}@postgres:5432/ensage
+    volumes: ["share-data:/app/data/storage"]
+volumes:
+  postgres-data:
+  share-data:

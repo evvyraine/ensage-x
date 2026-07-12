@@ -121,7 +121,8 @@
     @apply border-border outline-ring/50;
     }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground min-h-screen;
+    background-image: radial-gradient(circle at 15% 0%, color-mix(in oklab, var(--primary) 7%, transparent), transparent 32rem);
     }
   button:not(:disabled), [role="button"]:not(:disabled) {
     cursor: pointer;
@@ -130,3 +131,5 @@
     @apply font-sans;
     }
 }
+
+::selection { background: color-mix(in oklab, var(--primary) 25%, transparent); }

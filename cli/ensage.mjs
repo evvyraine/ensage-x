@@ -1,0 +1,19 @@
+#!/usr/bin/env node
+import { readFile, writeFile, mkdir } from "node:fs/promises"
+import { homedir } from "node:os"
+import { dirname, join } from "node:path"
+const configPath=join(homedir(),".config","ensage","config.json")
+async function config(){try{return JSON.parse(await readFile(configPath,"utf8"))}catch{return {}}}
+function arg(name){const i=process.argv.indexOf(name);return i>=0?process.argv[i+1]:undefined}
+async function stdin(){const chunks=[];for await(const c of process.stdin)chunks.push(c);return Buffer.concat(chunks)}
+async function api(path,options={}){const c=await config();if(!c.url||!c.token)throw new Error("Run: ensage configure --url https://ensage.example --token ens_…");const r=await fetch(`${c.url.replace(/\/$/,"")}${path}`,{...options,headers:{authorization:`Bearer ${c.token}`,...options.headers}});const data=r.status===204?null:await r.json();if(!r.ok)throw new Error(data?.error??`HTTP ${r.status}`);return data}
+const cmd=process.argv[2]
+try{
+ if(cmd==="configure"){const value={url:arg("--url"),token:arg("--token")};if(!value.url||!value.token)throw new Error("Both --url and --token are required");await mkdir(dirname(configPath),{recursive:true,mode:0o700});await writeFile(configPath,JSON.stringify(value,null,2),{mode:0o600});console.log("ensage configured")}
+ else if(cmd==="create"){const isFile=arg("--file");const isLink=arg("--link");if(isFile){const body=await readFile(isFile);const d=await api("/api/v1/uploads",{method:"POST",headers:{"content-type":"application/octet-stream","content-length":String(body.length),"x-ensage-filename":encodeURIComponent(isFile.split("/").pop()),"x-ensage-visibility":arg("--visibility")??"unlisted"},body,duplex:"half"});const c=await config();console.log(`${c.url}/s/${d.share.slug}`)}else{const content=isLink??(await stdin()).toString("utf8");if(!content)throw new Error("Pipe content to stdin or pass --link URL");const share=isLink?{kind:"link",url:isLink,title:arg("--title")}:{kind:"text",content,title:arg("--title"),language:arg("--language")??"text"};const d=await api("/api/v1/shares",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({share,visibility:arg("--visibility")??"unlisted",password:arg("--password"),expiresInHours:arg("--ttl")?Number(arg("--ttl")):null})});const c=await config();console.log(`${c.url}/s/${d.share.slug}`)}}
+ else if(cmd==="list"){const d=await api(`/api/v1/shares${arg("--search")?`?q=${encodeURIComponent(arg("--search"))}`:""}`);for(const s of d.shares)console.log(`${s.id}\t${s.kind}\t${s.state}\t${s.slug}\t${s.title??""}`)}
+ else if(cmd==="view"){const id=process.argv[3];if(!id)throw new Error("Usage: ensage view <id>");const d=await api(`/api/v1/shares/${id}`);if(d.share.kind==="file"){const c=await config();const r=await fetch(`${c.url.replace(/\/$/,"")}/api/v1/shares/${id}/content`,{headers:{authorization:`Bearer ${c.token}`}});if(!r.ok)throw new Error(`HTTP ${r.status}`);process.stdout.write(Buffer.from(await r.arrayBuffer()))}else process.stdout.write(d.share.kind==="text"?d.share.content:`${d.share.targetUrl}\n`)}
+ else if(cmd==="trash"||cmd==="restore"){const id=process.argv[3];if(!id)throw new Error(`Usage: ensage ${cmd} <id>`);await api(`/api/v1/shares/${id}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({action:cmd})});console.log(`${cmd} complete`)}
+ else if(cmd==="delete"){const id=process.argv[3];if(!id)throw new Error("Usage: ensage delete <id>");await api(`/api/v1/shares/${id}`,{method:"DELETE"});console.log("deleted")}
+ else console.log("ensage\n\n  configure --url URL --token TOKEN\n  create [--stdin] [--link URL] [--file PATH] [--title TEXT] [--password VALUE] [--ttl HOURS]\n  list [--search QUERY]\n  view <id>\n  trash <id> | restore <id> | delete <id>")
+}catch(e){console.error(`ensage: ${e.message}`);process.exitCode=1}
