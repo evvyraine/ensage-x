@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation"
-import { and, eq, ne } from "drizzle-orm"
+import { and, eq, ne, sql } from "drizzle-orm"
 import { auth } from "@clerk/nextjs/server"
 import Link from "next/link"
+import { ExternalLink, Globe2 } from "lucide-react"
 import { database } from "@/lib/db"
-import { shares, users } from "@/lib/db/schema"
+import { recentViews, shares, users } from "@/lib/db/schema"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 export const dynamic = "force-dynamic"
@@ -39,6 +40,14 @@ export default async function PublicShare({
       .where(eq(users.clerkId, session.userId))
       .limit(1)
     isOwner = user?.id === share.ownerId
+    if (user)
+      await database()
+        .insert(recentViews)
+        .values({ userId: user.id, shareId: share.id, viewedAt: new Date() })
+        .onConflictDoUpdate({
+          target: [recentViews.userId, recentViews.shareId],
+          set: { viewedAt: new Date() },
+        })
   }
   if (share.visibility === "private" && !isOwner) notFound()
   if (share.passwordHash && !isOwner)
@@ -57,6 +66,10 @@ export default async function PublicShare({
         </div>
       </main>
     )
+  await database()
+    .update(shares)
+    .set({ viewCount: sql`${shares.viewCount} + 1`, lastViewedAt: new Date() })
+    .where(eq(shares.id, share.id))
   return (
     <main className="mx-auto max-w-5xl p-6 py-12">
       <header className="mb-8 flex items-center">
@@ -81,18 +94,30 @@ export default async function PublicShare({
           <code>{share.content}</code>
         </pre>
       ) : share.kind === "link" ? (
-        <div className="rounded-2xl border bg-card p-8">
-          <p className="break-all text-muted-foreground">{share.targetUrl}</p>
-          <Button asChild className="mt-5">
-            <a
-              href={share.targetUrl!}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Open link
-            </a>
-          </Button>
-        </div>
+        <a
+          href={share.targetUrl!}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group block overflow-hidden rounded-2xl border bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg"
+        >
+          <div className="flex min-h-48 items-center justify-center bg-gradient-to-br from-primary/15 via-muted to-background">
+            <Globe2 className="size-14 text-primary/70" />
+          </div>
+          <div className="flex items-center gap-4 p-6">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+                {new URL(share.targetUrl!).hostname}
+              </p>
+              <h2 className="mt-2 font-heading text-xl font-semibold">
+                {share.title || "Open shared link"}
+              </h2>
+              <p className="mt-2 truncate text-sm text-muted-foreground">
+                {share.targetUrl}
+              </p>
+            </div>
+            <ExternalLink className="size-5 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </div>
+        </a>
       ) : (
         <div className="rounded-2xl border bg-card p-8">
           <p className="text-muted-foreground">

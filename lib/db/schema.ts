@@ -66,6 +66,7 @@ export const collections = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     description: text("description"),
+    icon: text("icon").default("folder").notNull(),
     slug: text("slug").notNull(),
     visibility: visibility("visibility").default("private").notNull(),
     publicTokenHash: text("public_token_hash"),

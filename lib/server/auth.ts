@@ -18,7 +18,17 @@ export async function requireUser() {
   const [created] = await db
     .insert(users)
     .values({ clerkId: session.userId })
+    .onConflictDoNothing()
     .returning()
+  if (!created) {
+    const [existing] = await db
+      .select()
+      .from(users)
+      .where(eq(users.clerkId, session.userId))
+      .limit(1)
+    if (existing) return existing
+    throw new Error("Could not provision local user")
+  }
   await db.insert(settings).values({ userId: created.id }).onConflictDoNothing()
   return created
 }

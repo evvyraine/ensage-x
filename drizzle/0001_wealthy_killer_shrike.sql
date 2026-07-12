@@ -1,0 +1,1 @@
+ALTER TABLE "collections" ADD COLUMN "icon" text DEFAULT 'folder' NOT NULL;

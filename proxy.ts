@@ -1,19 +1,9 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server"
+import { clerkMiddleware } from "@clerk/nextjs/server"
 
-const isPublicRoute = createRouteMatcher([
-  "/sign-in(.*)",
-  "/sign-up(.*)",
-  "/$",
-  "/s/(.*)",
-  "/api/v1/shares/(.*)/content",
-  "/api/health",
-])
-
-export default clerkMiddleware(async (auth, request) => {
-  if (!isPublicRoute(request)) {
-    await auth.protect()
-  }
-})
+// Clerk populates request authentication here. Authorization is deliberately
+// enforced at each page, route handler, and data-access boundary so browser
+// sessions and ensage API keys can coexist without path-matcher gaps.
+export default clerkMiddleware()
 
 export const config = {
   matcher: [

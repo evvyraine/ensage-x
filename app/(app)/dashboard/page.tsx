@@ -1,30 +1,27 @@
 import Link from "next/link"
-import { ArrowUpRight, Boxes, Eye, FileText, Plus } from "lucide-react"
+import { ArrowUpRight, Boxes, Eye, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { PageHeading } from "@/components/app/page-heading"
 import { ShareList } from "@/components/app/share-list"
-export default function Dashboard() {
+import { workspaceData } from "@/lib/server/queries"
+export const dynamic = "force-dynamic"
+export default async function Dashboard() {
+  const { stats, recent } = await workspaceData()
   return (
     <>
       <PageHeading
-        title="Good to see you"
+        title="Your workspace"
         description="Everything you’ve shared, at a glance."
-        action={
-          <Button asChild>
-            <Link href="/new">
-              <Plus />
-              New share
-            </Link>
-          </Button>
-        }
       />
       <div className="grid gap-4 sm:grid-cols-3">
-        {[
-          [FileText, "42", "Active shares"],
-          [Eye, "1,284", "Total views"],
-          [Boxes, "6", "Collections"],
-        ].map(([Icon, value, label]) => (
+        {(
+          [
+            [FileText, stats.active, "Active shares"],
+            [Eye, stats.views, "Total views"],
+            [Boxes, stats.collections, "Collections"],
+          ] as const
+        ).map(([Icon, value, label]) => (
           <Card key={String(label)}>
             <CardContent className="p-5">
               <Icon className="size-4 text-muted-foreground" />
@@ -44,7 +41,7 @@ export default function Dashboard() {
           </Link>
         </Button>
       </div>
-      <ShareList />
+      <ShareList shares={recent} />
     </>
   )
 }

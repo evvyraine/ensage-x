@@ -133,3 +133,9 @@
 }
 
 ::selection { background: color-mix(in oklab, var(--primary) 25%, transparent); }
+
+@media (min-width: 1024px) {
+  .mobile-tab-bar {
+    display: none !important;
+  }
+}

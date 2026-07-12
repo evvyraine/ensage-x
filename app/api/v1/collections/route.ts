@@ -9,6 +9,18 @@ const input = z.object({
   name: z.string().trim().min(1).max(100),
   description: z.string().trim().max(500).optional(),
   visibility: z.enum(["private", "unlisted", "public"]).default("private"),
+  icon: z
+    .enum([
+      "folder",
+      "code",
+      "briefcase",
+      "book",
+      "palette",
+      "rocket",
+      "heart",
+      "star",
+    ])
+    .default("folder"),
 })
 const toSlug = (name: string) =>
   `${

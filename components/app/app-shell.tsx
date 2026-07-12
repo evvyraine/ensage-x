@@ -7,21 +7,18 @@ import {
   BookOpen,
   Boxes,
   Clock3,
-  Command,
+  Home,
   LayoutDashboard,
-  Plus,
   Search,
   Settings,
   Trash2,
   UserRound,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-
+import { NewShareOverlay } from "./new-share-overlay"
 const nav = [
   ["Dashboard", "/dashboard", LayoutDashboard],
-  ["New share", "/new", Plus],
   ["Shares", "/shares", Archive],
   ["Collections", "/collections", Boxes],
   ["Recently viewed", "/recent", Clock3],
@@ -35,7 +32,7 @@ const secondary = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-[250px_1fr]">
+    <div className="min-h-screen pb-28 lg:grid lg:grid-cols-[250px_1fr] lg:pb-0">
       <aside className="hidden border-r bg-card/70 p-4 backdrop-blur lg:flex lg:flex-col">
         <Link
           href="/dashboard"
@@ -43,12 +40,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         >
           en<span className="text-primary">sage</span>
         </Link>
-        <Button asChild className="mt-5 justify-start">
-          <Link href="/new">
-            <Plus />
-            New share <kbd className="ml-auto text-[10px] opacity-70">N</kbd>
-          </Link>
-        </Button>
+        <div className="mt-5">
+          <NewShareOverlay />
+        </div>
         <nav className="mt-5 space-y-1">
           {nav.map(([label, href, Icon]) => (
             <Link
@@ -81,7 +75,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
       <div className="min-w-0">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/85 px-5 backdrop-blur">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-background/85 px-4 backdrop-blur sm:px-5">
           <Link
             href="/dashboard"
             className="font-heading text-lg font-semibold lg:hidden"
@@ -92,20 +86,77 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Search className="absolute top-2.5 left-3 size-4 text-muted-foreground" />
             <Input
               name="q"
-              placeholder="Search shares, content, and collections…"
-              className="pr-14 pl-9"
+              placeholder="Search shares and collections…"
+              className="pl-9"
             />
-            <kbd className="absolute top-2.5 right-3 text-xs text-muted-foreground">
-              ⌘ K
-            </kbd>
           </form>
-          <Button variant="ghost" size="icon">
-            <Command />
-          </Button>
           <UserButton />
         </header>
-        <div className="mx-auto max-w-7xl p-5 sm:p-8">{children}</div>
+        <div className="mx-auto max-w-7xl p-4 sm:p-8">{children}</div>
       </div>
+      <nav
+        aria-label="Mobile navigation"
+        className="mobile-tab-bar z-40 items-center rounded-2xl border bg-background/95 px-2 py-2 shadow-xl backdrop-blur"
+        style={{
+          position: "fixed",
+          left: "12px",
+          right: "12px",
+          bottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
+          display: "grid",
+          gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+          width: "auto",
+        }}
+      >
+        <MobileLink
+          href="/dashboard"
+          label="Home"
+          icon={Home}
+          active={pathname === "/dashboard"}
+        />
+        <MobileLink
+          href="/shares"
+          label="Shares"
+          icon={Archive}
+          active={pathname.startsWith("/shares")}
+        />
+        <NewShareOverlay compact />
+        <MobileLink
+          href="/collections"
+          label="Collections"
+          icon={Boxes}
+          active={pathname.startsWith("/collections")}
+        />
+        <MobileLink
+          href="/settings"
+          label="Settings"
+          icon={Settings}
+          active={pathname === "/settings"}
+        />
+      </nav>
     </div>
+  )
+}
+function MobileLink({
+  href,
+  label,
+  icon: Icon,
+  active,
+}: {
+  href: string
+  label: string
+  icon: typeof Home
+  active: boolean
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "flex min-w-0 flex-col items-center gap-1 overflow-hidden py-1 text-[10px] font-medium text-muted-foreground",
+        active && "text-primary"
+      )}
+    >
+      <Icon className="size-5" />
+      {label}
+    </Link>
   )
 }

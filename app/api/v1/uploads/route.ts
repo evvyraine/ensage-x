@@ -1,5 +1,6 @@
 import { database } from "@/lib/db"
-import { auditEvents, shares } from "@/lib/db/schema"
+import { auditEvents, settings, shares } from "@/lib/db/schema"
+import { eq } from "drizzle-orm"
 import { authenticateRequest } from "@/lib/server/auth"
 import { apiError } from "@/lib/server/http"
 import { enforceRateLimit } from "@/lib/server/rate-limit"
@@ -13,6 +14,7 @@ const headersSchema = z.object({
   type: z.string().max(160).default("application/octet-stream"),
   size: z.coerce.number().int().positive().max(104857600),
   visibility: z.enum(["private", "unlisted", "public"]).default("unlisted"),
+  collectionId: z.uuid().nullable().optional(),
 })
 export async function POST(request: Request) {
   let key: string | undefined
@@ -26,7 +28,18 @@ export async function POST(request: Request) {
       type: request.headers.get("content-type") ?? undefined,
       size: request.headers.get("content-length"),
       visibility: request.headers.get("x-ensage-visibility") ?? undefined,
+      collectionId: request.headers.get("x-ensage-collection") || null,
     })
+    const [limits] = await database()
+      .select({ maxUploadBytes: settings.maxUploadBytes })
+      .from(settings)
+      .where(eq(settings.userId, user.id))
+      .limit(1)
+    if (meta.size > (limits?.maxUploadBytes ?? 104857600))
+      return Response.json(
+        { error: "File exceeds your workspace upload limit" },
+        { status: 413 }
+      )
     const token = randomToken()
     const slug = makeSlug()
     key = `${user.id}/${crypto.randomUUID()}`
@@ -38,6 +51,7 @@ export async function POST(request: Request) {
         kind: "file",
         state: "pending",
         visibility: meta.visibility,
+        collectionId: meta.collectionId,
         title: meta.name,
         originalName: meta.name,
         mediaType: meta.type,
